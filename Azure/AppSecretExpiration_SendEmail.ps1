@@ -1,10 +1,15 @@
-$AppID = Get-AzAutomationVariable -Name 'appID'
+$AppID = Get-AzAutomationVariable -Name 'appID' 
 $TenantID = Get-AzAutomationVariable -Name 'tenantID'
-$AppSecret = Get-AzAutomationVariable -Name 'appSecret'
+$AppSecret = Get-AzAutomationVariable -Name 'appSecret' 
+
+write-output "the appID is $AppID"
+write-output "the tenantID is $TenantID"
+write-output "the appSecret is $AppSecret"
+
 
 [int32]$expirationDays = 30
-[string]$emailSender = "ENTER THE UPN OF THE SENDER"
-[string] $emailTo = "[ENTER THE EMAIL ADDRESS]"
+[string]$emailSender = "[ENTER THE UPN OF THE SENDER]"
+[string] $emailTo = "[ENTER THE EMAIL RECIPIENT]"
 
 Function Connect-MSGraphAPI {
     param (

@@ -2,7 +2,7 @@ $AppID = Get-AutomationVariable -Name 'appID'
 $TenantID = Get-AutomationVariable -Name 'tenantID'
 $AppSecret = Get-AutomationVariable -Name 'appSecret' 
 
-[string]$teamsWebhookURI = ''
+[string]$teamsWebhookURI = '[ENTER TEAMS WEBHOOK URI]'
 [int32]$expirationDays = 30
 
 Function Connect-MSGraphAPI {
@@ -99,22 +99,28 @@ $Applications.value | Sort-Object displayName | Foreach-Object {
     }
 }
 
-$textTable = $array | Sort-Object daysUntil | select-object displayName, daysUntil | ConvertTo-Html
-$JSONBody = [PSCustomObject][Ordered]@{
-    "@type"      = "MessageCard"
-    "@context"   = "<http://schema.org/extensions>"
-    "themeColor" = '0078D7'
-    "title"      = "$($Array.count) App Secrets areExpiring Soon"
-    "text"       = "$textTable"
+if ($array.count -ne 0) {
+    Write-output "Sending Teams Message"
+    $textTable = $array | Sort-Object daysUntil | select-object displayName, daysUntil | ConvertTo-Html
+    $JSONBody = [PSCustomObject][Ordered]@{
+        "@type"      = "MessageCard"
+        "@context"   = "<http://schema.org/extensions>"
+        "themeColor" = '0078D7'
+        "title"      = "$($Array.count) App Secrets areExpiring Soon"
+        "text"       = "$textTable"
+    }
+
+    $TeamMessageBody = ConvertTo-Json $JSONBody
+
+    $parameters = @{
+        "URI"         = $teamsWebhookURI
+        "Method"      = 'POST'
+        "Body"        = $TeamMessageBody
+        "ContentType" = 'application/json'
+    }
+
+    Invoke-RestMethod @parameters
 }
-
-$TeamMessageBody = ConvertTo-Json $JSONBody
-
-$parameters = @{
-    "URI"         = $teamsWebhookURI
-    "Method"      = 'POST'
-    "Body"        = $TeamMessageBody
-    "ContentType" = 'application/json'
+else {
+    write-output "No App Secrets are expiring soon"
 }
-
-Invoke-RestMethod @parameters

@@ -144,6 +144,11 @@ $Applications.value | Sort-Object displayName | Foreach-Object {
         }
     }
 }
-
-$textTable = $array | Sort-Object daysUntil | select-object displayName, daysUntil | ConvertTo-Html -Fragment
-Send-MSGraphEmail -Uri "https://graph.microsoft.com/v1.0/users/$emailSender/sendMail" -AccessToken $tokenResponse.access_token -To $emailTo  -Body $textTable 
+if ($array -ne 0) {
+    write-output "sending email"
+    $textTable = $array | Sort-Object daysUntil | select-object displayName, daysUntil | ConvertTo-Html -Fragment
+    Send-MSGraphEmail -Uri "https://graph.microsoft.com/v1.0/users/$emailSender/sendMail" -AccessToken $tokenResponse.access_token -To $emailTo  -Body $textTable 
+}
+else {
+    write-output "No apps with expiring secrets"
+}

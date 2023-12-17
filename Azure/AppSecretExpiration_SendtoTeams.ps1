@@ -1,6 +1,6 @@
-$AppID = Get-AzAutomationVariable -Name 'appID' 
-$TenantID = Get-AzAutomationVariable -Name 'tenantID'
-$AppSecret = Get-AzAutomationVariable -Name 'appSecret' 
+$AppID = Get-AutomationVariable -Name 'appID' 
+$TenantID = Get-AutomationVariable -Name 'tenantID'
+$AppSecret = Get-AutomationVariable -Name 'appSecret' 
 
 [string]$teamsWebhookURI = ''
 [int32]$expirationDays = 30

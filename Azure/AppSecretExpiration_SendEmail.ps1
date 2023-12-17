@@ -2,11 +2,6 @@ $AppID = Get-AutomationVariable -Name 'appID'
 $TenantID = Get-AutomationVariable -Name 'tenantID'
 $AppSecret = Get-AutomationVariable -Name 'appSecret' 
 
-write-output "the appID is $AppID"
-write-output "the tenantID is $TenantID"
-write-output "the appSecret is $AppSecret"
-
-
 [int32]$expirationDays = 30
 [string]$emailSender = "[ENTER THE UPN OF THE SENDER]"
 [string] $emailTo = "[ENTER THE EMAIL RECIPIENT]"

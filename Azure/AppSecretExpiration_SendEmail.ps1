@@ -1,10 +1,25 @@
-$AppID = Get-AutomationVariable -Name 'appID' 
-$TenantID = Get-AutomationVariable -Name 'tenantID'
-$AppSecret = Get-AutomationVariable -Name 'appSecret' 
-
 [int32]$expirationDays = 30
 [string]$emailSender = "[ENTER THE UPN OF THE SENDER]"
-[string] $emailTo = "[ENTER THE EMAIL RECIPIENT]"
+[string]$emailTo = "[ENTER THE EMAIL RECIPIENT]"
+$Authtype = "ManagedIdentity"  #Or "ServicePrincipal"
+
+switch ($Authtype) {
+    ServicePrincipal {
+        $AppID = Get-AutomationVariable -Name 'appID' 
+        $TenantID = Get-AutomationVariable -Name 'tenantID'
+        $AppSecret = Get-AutomationVariable -Name 'appSecret'
+    }
+
+    ManagedIdentity {
+        #Connect to Az Account with the Managed Identity  
+        Connect-AzAccount -Identity
+        #Extract the access token from the AzAccount authentication context and use it to connect to Microsoft Graph
+        $AccessToken = (Get-AzAccessToken -ResourceTypeName MSGraph).token
+    }
+}
+
+
+
 
 Function Connect-MSGraphAPI {
     param (
@@ -115,13 +130,15 @@ Function Send-MSGraphEmail {
     }
 }
 
+If ($Authtype -eq "ServicePrincipal") {
+    $tokenResponse = Connect-MSGraphAPI -AppID $AppID -TenantID $TenantID -AppSecret $AppSecret
+    $AccessToken = $tokenResponse.access_token
+}
 
 
-
-$tokenResponse = Connect-MSGraphAPI -AppID $AppID -TenantID $TenantID -AppSecret $AppSecret
 
 $array = @()
-$applications = Get-MSGraphRequest -AccessToken $tokenResponse.access_token -Uri "https://graph.microsoft.com/v1.0/applications/"
+$applications = Get-MSGraphRequest -AccessToken $AccessToken -Uri "https://graph.microsoft.com/v1.0/applications/"
 $Applications.value | Sort-Object displayName | Foreach-Object {
     #If there are more than one password credentials, we need to get the expiration of each one
     if ($_.passwordCredentials.endDateTime.count -gt 1) {
@@ -147,7 +164,7 @@ $Applications.value | Sort-Object displayName | Foreach-Object {
 if ($array -ne 0) {
     write-output "sending email"
     $textTable = $array | Sort-Object daysUntil | select-object displayName, daysUntil | ConvertTo-Html -Fragment
-    Send-MSGraphEmail -Uri "https://graph.microsoft.com/v1.0/users/$emailSender/sendMail" -AccessToken $tokenResponse.access_token -To $emailTo  -Body $textTable 
+    Send-MSGraphEmail -Uri "https://graph.microsoft.com/v1.0/users/$emailSender/sendMail" -AccessToken $AccessToken -To $emailTo -Body $textTable 
 }
 else {
     write-output "No apps with expiring secrets"

@@ -37,14 +37,14 @@ Function Get-MSGraphRequest {
         [system.string]$AccessToken
     )
     begin {
-        $allPages = @()
+        $allPages = [System.Collections.ArrayList]@()
         $ReqTokenBody = @{
             Headers = @{
                 "Content-Type"  = "application/json"
                 "Authorization" = "Bearer $($AccessToken)"
             }
             Method  = "Get"
-            Uri     = $URI
+            Uri     = $Uri
         }
     }
     process {
@@ -57,16 +57,14 @@ Function Get-MSGraphRequest {
                         "Authorization" = "Bearer $($AccessToken)"
                     }
                     Method  = "Get"
-                    Uri     = $URI
+                    Uri     = $data.'@odata.nextLink'
                 }
                 $Data = Invoke-RestMethod @ReqTokenBody
-                $allPages += $Data
-            } until (
-                !$data.'@odata.nextLink'
-            )
+                $allPages.Add($data)
+            } until (!$data.'@odata.nextLink')
         }
         else {
-            $allPages += $Data
+            $allPages.Add($Data)
         }
     }
     end {

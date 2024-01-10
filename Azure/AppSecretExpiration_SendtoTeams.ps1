@@ -2,7 +2,7 @@ $AppID = Get-AutomationVariable -Name 'appID'
 $TenantID = Get-AutomationVariable -Name 'tenantID'
 $AppSecret = Get-AutomationVariable -Name 'appSecret' 
 
-[string]$teamsWebhookURI = 'https://bwya77.webhook.office.com/webhookb2/eee030b9-93ef-4fae-add9-17bf369d1101@6438b2c9-54e9-4fce-9851-f00c24b5dc1f/IncomingWebhook/1c02f99f81244c60b91043e4e0a37dab/5bcffade-2afd-48a2-8096-390a9090555c'
+[string]$teamsWebhookURI = '[ENTER WEBHOOK URL HERE]'
 [int32]$expirationDays = 30
 
 Function Connect-MSGraphAPI {

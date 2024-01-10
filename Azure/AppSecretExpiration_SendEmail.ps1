@@ -1,10 +1,10 @@
 $AppID = Get-AutomationVariable -Name 'appID' 
 $TenantID = Get-AutomationVariable -Name 'tenantID'
-$AppSecret = Get-AutomationVariable -Name 'appSecret' 
+$AppSecret = Get-AutomationVariable -Name 'appSecret'  
 
-[int32]$expirationDays = 30
-[string]$emailSender = "[ENTER THE UPN OF THE SENDER]"
-[string] $emailTo = "[ENTER THE EMAIL RECIPIENT]"
+[int32]$expirationDays = 100
+[string]$emailSender = "brad@thelazyadministrator.com"
+[string] $emailTo = "brad@thelazyadministrator.com"
 
 Function Connect-MSGraphAPI {
     param (
@@ -36,7 +36,7 @@ Function Get-MSGraphRequest {
         [system.string]$AccessToken
     )
     begin {
-        $allPages = [System.Collections.ArrayList]@()
+        [array]$allPages = @()
         $ReqTokenBody = @{
             Headers = @{
                 "Content-Type"  = "application/json"
@@ -47,24 +47,13 @@ Function Get-MSGraphRequest {
         }
     }
     process {
-        $data = Invoke-RestMethod @ReqTokenBody
-        if ($data.'@odata.nextLink') {
-            do {
-                $ReqTokenBody = @{
-                    Headers = @{
-                        "Content-Type"  = "application/json"
-                        "Authorization" = "Bearer $($AccessToken)"
-                    }
-                    Method  = "Get"
-                    Uri     = $data.'@odata.nextLink'
-                }
-                $Data = Invoke-RestMethod @ReqTokenBody
-                $allPages.Add($data)
-            } until (!$data.'@odata.nextLink')
-        }
-        else {
-            $allPages.Add($Data)
-        }
+        do {
+            $data = Invoke-RestMethod @ReqTokenBody
+            $allpages += $data.value
+            if ($data.'@odata.nextLink') {
+                $ReqTokenBody.Uri = $data.'@odata.nextLink'
+            }
+        } until (!$data.'@odata.nextLink')
     }
     end {
         $allPages
@@ -114,13 +103,14 @@ Function Send-MSGraphEmail {
 }
 
 
-
-
 $tokenResponse = Connect-MSGraphAPI -AppID $AppID -TenantID $TenantID -AppSecret $AppSecret
 
 $array = @()
-$applications = Get-MSGraphRequest -AccessToken $tokenResponse.access_token -Uri "https://graph.microsoft.com/v1.0/applications/"
-$Applications.value | Sort-Object displayName | Foreach-Object {
+Get-MSGraphRequest -AccessToken $tokenResponse.access_token -Uri "https://graph.microsoft.com/v1.0/applications/" |  Foreach-Object {
+    [string]$secretdisplayName = $_.passwordCredentials.displayName
+    [string]$id = $_.id
+    [string]$displayname = $_.displayName
+
     #If there are more than one password credentials, we need to get the expiration of each one
     if ($_.passwordCredentials.endDateTime.count -gt 1) {
         $endDates = $_.passwordCredentials.endDateTime
@@ -130,21 +120,33 @@ $Applications.value | Sort-Object displayName | Foreach-Object {
             $daysUntilExpiration += (New-TimeSpan -Start ([System.TimeZoneInfo]::ConvertTimeBySystemTimeZoneId([DateTime]::Now, "Central Standard Time")) -End $Date).Days
         }
     }
-    Elseif ($_.passwordCredentials.endDateTime.count -eq 1) {
+    ElseIf ($_.passwordCredentials.endDateTime.count -eq 1) {
         $Date = [TimeZoneInfo]::ConvertTimeBySystemTimeZoneId($_.passwordCredentials.endDateTime, 'Central Standard Time')
         $daysUntilExpiration = (New-TimeSpan -Start ([System.TimeZoneInfo]::ConvertTimeBySystemTimeZoneId([DateTime]::Now, "Central Standard Time")) -End $Date).Days 
     }
 
-    if ($daysUntilExpiration -le $expirationDays) {
-        $array += $_ | Select-Object id, displayName, @{
-            name = "daysUntil"; 
-            expr = { $daysUntilExpiration } 
+    $daysUntilExpiration | foreach-object { 
+        if (($_ -ne $null) -and ($_ -le $expirationDays)) {
+            $array += $_ | Select-Object @{
+                name = "id"; 
+                expr = { $id } }, 
+                @{
+                name = "displayName"; 
+                expr = { $displayName } }, 
+                @{
+                name = "secretdisplayName"; 
+                expr = { $secretdisplayName } },
+                @{
+                name = "daysUntil"; 
+                expr = { $_ } }
         }
     }
+    $daysUntilExpiration = $null
 }
+
 if ($array -ne 0) {
     write-output "sending email"
-    $textTable = $array | Sort-Object daysUntil | select-object displayName, daysUntil | ConvertTo-Html -Fragment
+    $textTable = $array | Sort-Object daysUntil | select-object displayName, secretdisplayname, daysUntil | ConvertTo-Html -Fragment
     Send-MSGraphEmail -Uri "https://graph.microsoft.com/v1.0/users/$emailSender/sendMail" -AccessToken $tokenResponse.access_token -To $emailTo  -Body $textTable 
 }
 else {

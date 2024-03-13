@@ -35,7 +35,7 @@ Function Get-MSGraphRequest {
         [system.string]$AccessToken
     )
     begin {
-        [array]$allPages = @()
+        [System.Array]$allPages = @()
         $ReqTokenBody = @{
             Headers = @{
                 "Content-Type"  = "application/json"
@@ -46,15 +46,19 @@ Function Get-MSGraphRequest {
         }
     }
     process {
-        do {
-            $data = Invoke-RestMethod @ReqTokenBody
-            $allpages += $data.value
-            if ($data.'@odata.nextLink') {
-                $ReqTokenBody.Uri = $data.'@odata.nextLink'
-            }
-        } until (!$data.'@odata.nextLink')
+        write-verbose "GET request at endpoint: $Uri"
+        $data = Invoke-RestMethod @ReqTokenBody
+        while ($data.'@odata.nextLink') {
+            $allPages += $data.value
+            $ReqTokenBody.Uri = $data.'@odata.nextLink'
+            $Data = Invoke-RestMethod @ReqTokenBody
+            # to avoid throttling, the loop will sleep for 3 seconds
+            Start-Sleep -Seconds 3
+        }
+        $allPages += $data.value
     }
     end {
+        Write-Verbose "Returning all results"
         $allPages
     }
 }

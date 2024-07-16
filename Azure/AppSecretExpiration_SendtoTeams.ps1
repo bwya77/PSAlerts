@@ -103,12 +103,18 @@ foreach ($app in $apps) {
 if ($array.count -ne 0) {
     Write-output "Sending Teams Message"
     $textTable = $array | Sort-Object daysUntil | select-object displayName, secretName, daysUntil | ConvertTo-Html
-    $JSONBody = [PSCustomObject][Ordered]@{
-        "@type"      = "MessageCard"
-        "@context"   = "<http://schema.org/extensions>"
-        "themeColor" = '0078D7'
-        "title"      = "$($Array.count) App Secrets areExpiring Soon"
-        "text"       = "$textTable"
+    $JSONBody = @{
+        type = "message"
+        attachments = @(
+            @{
+                contentType = "$textTable"
+                content = @{
+                    "$schema" = "http://adaptivecards.io/schemas/adaptive-card.json"
+                    type = "AdaptiveCard"
+                    version = "1.2"
+                }
+            }
+        )
     }
 
     $TeamMessageBody = ConvertTo-Json $JSONBody
